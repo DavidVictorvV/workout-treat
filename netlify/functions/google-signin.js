@@ -1,7 +1,23 @@
 exports.handler = async function (event, context) {
+  const headers = {
+    "Access-Control-Allow-Origin": "*", // Change to specific origin if needed
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+
+  // Handle preflight request
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers,
+      body: "",
+    };
+  }
+
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: "Method Not Allowed" }),
     };
   }
@@ -11,14 +27,16 @@ exports.handler = async function (event, context) {
   if (!idToken) {
     return {
       statusCode: 400,
+      headers,
       body: JSON.stringify({ error: "Google ID token is required" }),
     };
   }
 
-  // Test mode for Swagger testing - return mock data immediately
+  // Test mode for Swagger or mock testing
   if (testMode) {
     return {
       statusCode: 200,
+      headers,
       body: JSON.stringify({
         idToken: "test_firebase_id_token_eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9",
         refreshToken: "test_firebase_refresh_token_AEu4IL2X7Y9k",
@@ -34,7 +52,6 @@ exports.handler = async function (event, context) {
   const firebaseApiKey = process.env.FIREBASE_API_KEY;
 
   try {
-    // Sign in with Google ID token
     const response = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${firebaseApiKey}`,
       {
@@ -42,7 +59,7 @@ exports.handler = async function (event, context) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           postBody: `id_token=${idToken}&providerId=google.com`,
-          requestUri: process.env.REQUEST_URI || "http://localhost:3000", // Your app's URI
+          requestUri: process.env.REQUEST_URI || "http://localhost:3000",
           returnIdpCredential: true,
           returnSecureToken: true,
         }),
@@ -52,15 +69,22 @@ exports.handler = async function (event, context) {
     const data = await response.json();
 
     if (data.error) {
+      let errorMessage = data.error.message;
+
+      if (errorMessage.includes("INVALID_IDP_RESPONSE")) {
+        errorMessage = "Invalid Google ID token or provider response";
+      }
+
       return {
         statusCode: 401,
-        body: JSON.stringify({ error: data.error.message }),
+        headers,
+        body: JSON.stringify({ error: errorMessage }),
       };
     }
 
-    // Return user data and tokens
     return {
       statusCode: 200,
+      headers,
       body: JSON.stringify({
         idToken: data.idToken,
         refreshToken: data.refreshToken,
@@ -74,6 +98,7 @@ exports.handler = async function (event, context) {
   } catch (error) {
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ error: error.message }),
     };
   }

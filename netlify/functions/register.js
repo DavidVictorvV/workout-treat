@@ -1,7 +1,23 @@
 exports.handler = async function (event, context) {
+  const headers = {
+    "Access-Control-Allow-Origin": "*", // Or replace with your domain for tighter security
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+
+  // Handle preflight request
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers,
+      body: "",
+    };
+  }
+
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: "Method Not Allowed" }),
     };
   }
@@ -11,14 +27,15 @@ exports.handler = async function (event, context) {
   if (!email || !password) {
     return {
       statusCode: 400,
+      headers,
       body: JSON.stringify({ error: "Email and password are required" }),
     };
   }
 
-  // Basic password validation
   if (password.length < 6) {
     return {
       statusCode: 400,
+      headers,
       body: JSON.stringify({
         error: "Password must be at least 6 characters long",
       }),
@@ -28,7 +45,6 @@ exports.handler = async function (event, context) {
   const firebaseApiKey = process.env.FIREBASE_API_KEY;
 
   try {
-    // Create new user account
     const response = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseApiKey}`,
       {
@@ -46,7 +62,6 @@ exports.handler = async function (event, context) {
     const data = await response.json();
 
     if (data.error) {
-      // Handle common Firebase errors
       let errorMessage = data.error.message;
 
       if (errorMessage.includes("EMAIL_EXISTS")) {
@@ -59,12 +74,14 @@ exports.handler = async function (event, context) {
 
       return {
         statusCode: 400,
+        headers,
         body: JSON.stringify({ error: errorMessage }),
       };
     }
 
     return {
       statusCode: 201,
+      headers,
       body: JSON.stringify({
         idToken: data.idToken,
         refreshToken: data.refreshToken,
@@ -77,6 +94,7 @@ exports.handler = async function (event, context) {
   } catch (error) {
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ error: error.message }),
     };
   }
