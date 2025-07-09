@@ -103,6 +103,11 @@ paths:
                   type: string
                   description: Google ID token obtained from Google Sign-In
                   example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXVkIjoiMTIzNDU2Nzg5MC1hYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ei5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsInN1YiI6IjEyMzQ1Njc4OTAifQ..."
+                testMode:
+                  type: boolean
+                  description: Enable test mode for Swagger testing (returns mock data without calling Firebase)
+                  example: true
+                  default: false
               required:
                 - idToken
       responses:

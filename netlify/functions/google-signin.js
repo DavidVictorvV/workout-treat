@@ -15,17 +15,17 @@ exports.handler = async function (event, context) {
     };
   }
 
-  // Test mode for Swagger testing
-  if (testMode && process.env.NODE_ENV === "development") {
+  // Test mode for Swagger testing - return mock data immediately
+  if (testMode) {
     return {
       statusCode: 200,
       body: JSON.stringify({
-        idToken: "test_firebase_id_token",
-        refreshToken: "test_firebase_refresh_token",
-        localId: "test_user_id",
-        email: "test@example.com",
+        idToken: "test_firebase_id_token_eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9",
+        refreshToken: "test_firebase_refresh_token_AEu4IL2X7Y9k",
+        localId: "test_user_id_123",
+        email: "testuser@example.com",
         displayName: "Test User",
-        photoUrl: "https://example.com/photo.jpg",
+        photoUrl: "https://example.com/avatar.jpg",
         isNewUser: false,
       }),
     };
