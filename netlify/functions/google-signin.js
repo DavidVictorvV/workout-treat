@@ -66,6 +66,25 @@ exports.handler = async function (event, context) {
       }
     );
 
+    console.log("Firebase response status:", response.status);
+    console.log("Firebase headers:", response.headers);
+    console.log("Firebase raw response text:", await response.text());
+
+    // Check if content-type is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      return {
+        statusCode: 502,
+        headers,
+        body: JSON.stringify({
+          error: "Unexpected response format from Firebase",
+          status: response.status,
+          rawResponse: text,
+        }),
+      };
+    }
+
     const data = await response.json();
 
     if (data.error) {
