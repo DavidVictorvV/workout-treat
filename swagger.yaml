@@ -84,6 +84,97 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /register:
+    post:
+      summary: Register new user with email and password
+      tags:
+        - Authentication
+      description: |
+        Create a new user account with email and password. 
+        Returns Firebase tokens upon successful registration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "newuser@example.com"
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                  example: "password123"
+                displayName:
+                  type: string
+                  description: Optional display name for the user
+                  example: "John Doe"
+              required:
+                - email
+                - password
+      responses:
+        "201":
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  idToken:
+                    type: string
+                    description: Firebase ID token
+                    example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refreshToken:
+                    type: string
+                    description: Firebase refresh token
+                    example: "AEu4IL2X7Y9k..."
+                  localId:
+                    type: string
+                    description: Firebase user ID
+                    example: "firebase_user_id_123"
+                  email:
+                    type: string
+                    format: email
+                    description: User's email address
+                    example: "newuser@example.com"
+                  displayName:
+                    type: string
+                    nullable: true
+                    description: User's display name
+                    example: "John Doe"
+                  isNewUser:
+                    type: boolean
+                    description: Always true for registration
+                    example: true
+        "400":
+          description: Bad request - validation errors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                missing_fields:
+                  value:
+                    error: "Email and password are required"
+                weak_password:
+                  value:
+                    error: "Password must be at least 6 characters long"
+                email_exists:
+                  value:
+                    error: "An account with this email already exists"
+                invalid_email:
+                  value:
+                    error: "Invalid email address"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /google-signin:
     post:
       summary: Google Sign-In authentication
