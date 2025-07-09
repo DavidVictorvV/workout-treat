@@ -1,0 +1,61 @@
+openapi: 3.0.0
+info:
+  title: Netlify API
+  version: 1.0.0
+
+servers:
+  - url: /.netlify/functions
+
+paths:
+  /test:
+    post:
+      summary: Test the Netlify function
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /login:
+    post:
+      summary: User login endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        "200":
+          description: Login success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  idToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        "401":
+          description: Unauthorized - invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
