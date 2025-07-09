@@ -2,14 +2,18 @@ openapi: 3.0.0
 info:
   title: Netlify API
   version: 1.0.0
+  description: Authentication API with email/password and Google Sign-In support
 
 servers:
   - url: /.netlify/functions
+    description: Netlify Functions server
 
 paths:
   /test:
     post:
       summary: Test the Netlify function
+      tags:
+        - Testing
       responses:
         "200":
           description: Success
@@ -20,10 +24,13 @@ paths:
                 properties:
                   message:
                     type: string
+                    example: "Function is working!"
 
   /login:
     post:
-      summary: User login endpoint
+      summary: User login with email and password
+      tags:
+        - Authentication
       requestBody:
         required: true
         content:
@@ -33,8 +40,12 @@ paths:
               properties:
                 email:
                   type: string
+                  format: email
+                  example: "user@example.com"
                 password:
                   type: string
+                  format: password
+                  example: "password123"
               required:
                 - email
                 - password
@@ -48,14 +59,130 @@ paths:
                 properties:
                   idToken:
                     type: string
+                    description: Firebase ID token
+                    example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
                   refreshToken:
                     type: string
+                    description: Firebase refresh token
+                    example: "AEu4IL2X7Y9k..."
+        "400":
+          description: Bad request - missing email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Unauthorized - invalid credentials
           content:
             application/json:
               schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /google-signin:
+    post:
+      summary: Google Sign-In authentication
+      tags:
+        - Authentication
+      description: |
+        Sign in using Google ID token. The client should first authenticate with Google
+        and obtain an ID token, then send it to this endpoint to get Firebase tokens.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idToken:
+                  type: string
+                  description: Google ID token obtained from Google Sign-In
+                  example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXVkIjoiMTIzNDU2Nzg5MC1hYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ei5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsInN1YiI6IjEyMzQ1Njc4OTAifQ..."
+              required:
+                - idToken
+      responses:
+        "200":
+          description: Google Sign-In success
+          content:
+            application/json:
+              schema:
                 type: object
                 properties:
-                  error:
+                  idToken:
                     type: string
+                    description: Firebase ID token
+                    example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refreshToken:
+                    type: string
+                    description: Firebase refresh token
+                    example: "AEu4IL2X7Y9k..."
+                  localId:
+                    type: string
+                    description: Firebase user ID
+                    example: "firebase_user_id_123"
+                  email:
+                    type: string
+                    format: email
+                    description: User's email address
+                    example: "user@gmail.com"
+                  displayName:
+                    type: string
+                    description: User's display name
+                    example: "John Doe"
+                  photoUrl:
+                    type: string
+                    format: uri
+                    description: User's profile photo URL
+                    example: "https://lh3.googleusercontent.com/a/photo.jpg"
+                  isNewUser:
+                    type: boolean
+                    description: Whether this is a new user registration
+                    example: false
+        "400":
+          description: Bad request - missing Google ID token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized - invalid Google ID token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid credentials"
+      required:
+        - error
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID token
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Testing
+    description: Testing and health check endpoints
