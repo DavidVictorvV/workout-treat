@@ -12,21 +12,20 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers, body: "" };
   }
 
-  const { userId, displayName } = event.queryStringParameters || {};
+  const id = event.queryStringParameters?.id;
 
-  if (!userId && !displayName) {
+  if (!id) {
     return {
       statusCode: 400,
       headers,
-      body: JSON.stringify({
-        error: "Either userId or displayName is required",
-      }),
+      body: JSON.stringify({ error: "Query parameter 'id' is required" }),
     };
   }
 
   try {
-    if (userId) {
-      const userRecord = await admin.auth().getUser(userId);
+    // First try as userId (Firebase UID)
+    try {
+      const userRecord = await admin.auth().getUser(id);
       return {
         statusCode: 200,
         headers,
@@ -35,13 +34,19 @@ exports.handler = async (event) => {
           email: userRecord.email,
           displayName: userRecord.displayName || null,
           photoUrl: userRecord.photoURL || null,
+          source: "auth",
         }),
       };
-    } else if (displayName) {
+    } catch (authError) {
+      // If not found, fall back to Firestore displayName
+      if (authError.code !== "auth/user-not-found") {
+        throw authError; // real error, rethrow
+      }
+
       const db = admin.firestore();
       const snapshot = await db
         .collection("users")
-        .where("displayName", "==", displayName)
+        .where("displayName", "==", id)
         .limit(1)
         .get();
 
@@ -62,14 +67,15 @@ exports.handler = async (event) => {
           email: userDoc.email,
           displayName: userDoc.displayName,
           photoUrl: userDoc.photoUrl || null,
+          source: "firestore",
         }),
       };
     }
-  } catch (error) {
+  } catch (err) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: error.message }),
+      body: JSON.stringify({ error: err.message }),
     };
   }
 };
