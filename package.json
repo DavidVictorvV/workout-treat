@@ -2,6 +2,7 @@
   "name": "firebase-auth-lambda",
   "version": "1.0.0",
   "dependencies": {
+    "firebase-admin": "^13.4.0",
     "node-fetch": "^2.7.0"
   }
 }

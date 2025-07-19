@@ -2,18 +2,43 @@ const admin = require("firebase-admin");
 
 // Initialize Firebase Admin SDK (only once)
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    }),
-  });
+  console.log("Initializing Firebase Admin SDK...");
+  console.log("Project ID:", process.env.FIREBASE_PROJECT_ID);
+  console.log("Client Email:", process.env.FIREBASE_CLIENT_EMAIL);
+  console.log("Private Key exists:", !!process.env.FIREBASE_PRIVATE_KEY);
+  console.log(
+    "Private Key length:",
+    process.env.FIREBASE_PRIVATE_KEY?.length || 0
+  );
+
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      }),
+    });
+    console.log("✅ Firebase Admin SDK initialized successfully");
+  } catch (initError) {
+    console.error(
+      "❌ Firebase Admin SDK initialization failed:",
+      initError.message
+    );
+    throw initError;
+  }
+} else {
+  console.log("🔄 Firebase Admin SDK already initialized");
 }
 
 const db = admin.firestore();
+console.log("✅ Firestore database reference obtained");
 
 exports.handler = async function (event, context) {
+  console.log("🚀 Lambda function started");
+  console.log("HTTP Method:", event.httpMethod);
+  console.log("Request body length:", event.body?.length || 0);
+
   const headers = {
     "Access-Control-Allow-Origin": "*", // Consider restricting to your domain
     "Access-Control-Allow-Headers": "Content-Type",
@@ -22,6 +47,7 @@ exports.handler = async function (event, context) {
 
   // Handle preflight CORS
   if (event.httpMethod === "OPTIONS") {
+    console.log("📡 Handling CORS preflight request");
     return {
       statusCode: 200,
       headers,
@@ -30,6 +56,7 @@ exports.handler = async function (event, context) {
   }
 
   if (event.httpMethod !== "POST") {
+    console.log("❌ Invalid HTTP method:", event.httpMethod);
     return {
       statusCode: 405,
       headers,
@@ -39,10 +66,15 @@ exports.handler = async function (event, context) {
 
   let idToken, testMode;
   try {
+    console.log("📝 Parsing request body...");
     const body = JSON.parse(event.body);
     idToken = body.idToken;
     testMode = body.testMode;
+    console.log("✅ Request body parsed successfully");
+    console.log("ID Token exists:", !!idToken);
+    console.log("Test Mode:", testMode);
   } catch (err) {
+    console.error("❌ Error parsing request body:", err.message);
     return {
       statusCode: 400,
       headers,
@@ -51,6 +83,7 @@ exports.handler = async function (event, context) {
   }
 
   if (!idToken && !testMode) {
+    console.log("❌ Missing required parameters: idToken or testMode");
     return {
       statusCode: 400,
       headers,
@@ -60,6 +93,7 @@ exports.handler = async function (event, context) {
 
   // For mock testing (e.g., Swagger)
   if (testMode) {
+    console.log("🧪 Running in test mode - returning mock data");
     return {
       statusCode: 200,
       headers,
@@ -76,8 +110,10 @@ exports.handler = async function (event, context) {
   }
 
   const firebaseApiKey = process.env.FIREBASE_API_KEY;
+  console.log("🔑 Firebase API Key exists:", !!firebaseApiKey);
 
   try {
+    console.log("🔥 Making request to Firebase Identity Toolkit...");
     const firebaseResponse = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${firebaseApiKey}`,
       {
@@ -128,6 +164,11 @@ exports.handler = async function (event, context) {
 
     // Create Firestore document for new users
     if (data.isNewUser) {
+      console.log("👤 New user detected! Creating Firestore document...");
+      console.log("User ID:", data.localId);
+      console.log("Email:", data.email);
+      console.log("Display Name:", data.displayName);
+
       try {
         const userData = {
           username:
@@ -138,13 +179,28 @@ exports.handler = async function (event, context) {
           photoUrl: data.photoUrl || null,
         };
 
+        console.log("📄 Creating userData document with data:", {
+          ...userData,
+          dateCreated: "[ServerTimestamp]", // Don't log the actual timestamp object
+        });
+
         await db.collection("userData").doc(data.localId).set(userData);
-        console.log(`Created userData document for user: ${data.localId}`);
+        console.log(
+          "✅ Successfully created userData document for user:",
+          data.localId
+        );
+        console.log("📍 Document path: userData/" + data.localId);
       } catch (firestoreError) {
-        console.error("Error creating Firestore document:", firestoreError);
+        console.error(
+          "❌ Error creating Firestore document:",
+          firestoreError.message
+        );
+        console.error("🔍 Firestore error details:", firestoreError);
         // Don't fail the entire request if Firestore creation fails
         // You might want to handle this differently based on your requirements
       }
+    } else {
+      console.log("🔄 Existing user - skipping Firestore document creation");
     }
 
     return {
@@ -161,7 +217,8 @@ exports.handler = async function (event, context) {
       }),
     };
   } catch (error) {
-    console.error("Firebase sign-in error:", error);
+    console.error("❌ Firebase sign-in error:", error.message);
+    console.error("🔍 Full error details:", error);
     return {
       statusCode: 500,
       headers,
