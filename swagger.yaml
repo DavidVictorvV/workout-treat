@@ -258,6 +258,86 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /delete-account:
+    delete:
+      summary: Delete user account and all associated data
+      tags:
+        - Account Management
+      description: |
+        Permanently delete the user account from Firebase Authentication and remove all
+        associated data from Firestore. This action cannot be undone.
+
+        **Requirements:**
+        - Valid Firebase ID token in Authorization header
+        - User must be authenticated
+
+        **What gets deleted:**
+        - User account from Firebase Authentication
+        - userData document from Firestore
+        - Any other user-related documents across collections
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Account deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message
+                    example: "Account deleted successfully"
+                  userId:
+                    type: string
+                    description: ID of the deleted user
+                    example: "firebase_user_id_123"
+                  email:
+                    type: string
+                    format: email
+                    description: Email of the deleted user
+                    example: "user@example.com"
+                  deletedAt:
+                    type: string
+                    format: date-time
+                    description: ISO timestamp of when the account was deleted
+                    example: "2024-01-15T10:30:45.123Z"
+        "401":
+          description: Unauthorized - missing, invalid, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                missing_token:
+                  value:
+                    error: "Authorization header with Bearer token required"
+                invalid_token:
+                  value:
+                    error: "Invalid or expired token"
+        "405":
+          description: Method not allowed - must use DELETE
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                    example: "Failed to delete account"
+                  details:
+                    type: string
+                    description: Detailed error information
+                    example: "Firebase authentication error details"
+
 components:
   schemas:
     Error:
@@ -280,5 +360,7 @@ components:
 tags:
   - name: Authentication
     description: User authentication endpoints
+  - name: Account Management
+    description: Account management operations
   - name: Testing
     description: Testing and health check endpoints
