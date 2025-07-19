@@ -41,7 +41,7 @@ paths:
                 email:
                   type: string
                   format: email
-                  example: "user@example.com"
+                  example: "newuser@example.com"
                 password:
                   type: string
                   format: password
@@ -295,7 +295,7 @@ paths:
                     type: string
                     format: email
                     description: User's email
-                    example: "user@example.com"
+                    example: "newuser@example.com"
                   displayName:
                     type: string
                     description: Display name of the user
@@ -368,7 +368,7 @@ paths:
                     type: string
                     format: email
                     description: Email of the deleted user
-                    example: "user@example.com"
+                    example: "newuser@example.com"
                   deletedAt:
                     type: string
                     format: date-time
