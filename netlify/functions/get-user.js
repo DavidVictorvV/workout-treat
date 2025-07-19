@@ -1,5 +1,35 @@
 const admin = require("firebase-admin");
-admin.initializeApp();
+
+// Initialize Firebase Admin SDK (only once)
+if (!admin.apps.length) {
+  console.log("Initializing Firebase Admin SDK...");
+  console.log("Project ID:", process.env.FIREBASE_PROJECT_ID);
+  console.log("Client Email:", process.env.FIREBASE_CLIENT_EMAIL);
+  console.log("Private Key exists:", !!process.env.FIREBASE_PRIVATE_KEY);
+  console.log(
+    "Private Key length:",
+    process.env.FIREBASE_PRIVATE_KEY?.length || 0
+  );
+
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      }),
+    });
+    console.log("✅ Firebase Admin SDK initialized successfully");
+  } catch (initError) {
+    console.error(
+      "❌ Firebase Admin SDK initialization failed:",
+      initError.message
+    );
+    throw initError;
+  }
+} else {
+  console.log("🔄 Firebase Admin SDK already initialized");
+}
 
 exports.handler = async (event) => {
   const headers = {
