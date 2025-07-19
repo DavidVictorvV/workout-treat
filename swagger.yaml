@@ -258,28 +258,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
-  /get-user:
+   /get-user:
     get:
       summary: Get user data by userId or displayName
       tags:
         - Account Management
       description: |
-        Retrieves user information from Firebase Authentication or Firestore.
-        If `userId` is provided, fetches directly using Firebase Auth.
-        If `displayName` is provided, searches Firestore users collection.
+        Retrieves user information based on a single `id` query parameter.
+        - First attempts to fetch from Firebase Authentication by user ID.
+        - If not found, falls back to Firestore to look up by display name.
+
+        **Note:** This method assumes no collision between display names and user IDs.
       parameters:
-        - name: userId
+        - name: id
           in: query
-          required: false
-          schema:
-            type: string
-            example: firebase_user_id_123
-        - name: displayName
-          in: query
-          required: false
+          required: true
           schema:
             type: string
             example: "John Doe"
+          description: |
+            Either a Firebase user ID (localId) or a display name.
+            The backend will attempt both methods to find the user.
       responses:
         "200":
           description: User found
@@ -290,15 +289,29 @@ paths:
                 properties:
                   userId:
                     type: string
+                    description: Firebase user ID
+                    example: "firebase_user_id_123"
                   email:
                     type: string
+                    format: email
+                    description: User's email
+                    example: "user@example.com"
                   displayName:
                     type: string
+                    description: Display name of the user
+                    example: "John Doe"
                   photoUrl:
                     type: string
                     format: uri
+                    description: Profile photo URL
+                    example: "https://lh3.googleusercontent.com/a/photo.jpg"
+                  source:
+                    type: string
+                    enum: [auth, firestore]
+                    description: Where the user was found (auth = Firebase Auth, firestore = Firestore)
+                    example: "auth"
         "400":
-          description: Bad request - missing parameters
+          description: Missing `id` parameter
           content:
             application/json:
               schema:
@@ -315,6 +328,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
 
   /delete-account:
     delete:
