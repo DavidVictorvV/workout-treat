@@ -258,7 +258,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
-   /get-user:
+  /get-user:
     get:
       summary: Get user data by userId or displayName
       tags:
@@ -328,7 +328,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-
 
   /delete-account:
     delete:
