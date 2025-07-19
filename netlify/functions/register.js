@@ -171,7 +171,6 @@ exports.handler = async function (event, context) {
         email: data.email,
         dateCreated: admin.firestore.FieldValue.serverTimestamp(),
         photoUrl: null, // No photo URL for email signups
-        signupMethod: "email/password",
       };
 
       console.log("📄 Creating userData document with data:", {
