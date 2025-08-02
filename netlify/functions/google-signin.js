@@ -1,65 +1,18 @@
 const admin = require("firebase-admin");
-
-// Initialize Firebase Admin SDK (only once)
-if (!admin.apps.length) {
-  console.log("Initializing Firebase Admin SDK...");
-  
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-  console.log("Project ID:", serviceAccount.project_id);
-  console.log("Client Email:", serviceAccount.client_email);
-  console.log("Private Key exists:", !!serviceAccount.private_key);
-  console.log(
-    "Private Key length:",
-    serviceAccount.private_key?.length || 0
-  );
-
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    console.log("✅ Firebase Admin SDK initialized successfully");
-  } catch (initError) {
-    console.error(
-      "❌ Firebase Admin SDK initialization failed:",
-      initError.message
-    );
-    throw initError;
-  }
-} else {
-  console.log("🔄 Firebase Admin SDK already initialized");
-}
-
-const db = admin.firestore();
-console.log("✅ Firestore database reference obtained");
+const { createResponse, handleCORS } = require('./shared/auth-middleware');
+const { getFirestore } = require('./shared/firebase-config');
 
 exports.handler = async function (event, context) {
   console.log("🚀 Lambda function started");
   console.log("HTTP Method:", event.httpMethod);
   console.log("Request body length:", event.body?.length || 0);
 
-  const headers = {
-    "Access-Control-Allow-Origin": "*", // Consider restricting to your domain
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
-
-  // Handle preflight CORS
-  if (event.httpMethod === "OPTIONS") {
-    console.log("📡 Handling CORS preflight request");
-    return {
-      statusCode: 200,
-      headers,
-      body: "",
-    };
-  }
+  const corsResponse = handleCORS(event);
+  if (corsResponse) return corsResponse;
 
   if (event.httpMethod !== "POST") {
     console.log("❌ Invalid HTTP method:", event.httpMethod);
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: "Method Not Allowed" }),
-    };
+    return createResponse(405, { error: "Method Not Allowed" });
   }
 
   let idToken, testMode;
@@ -73,38 +26,26 @@ exports.handler = async function (event, context) {
     console.log("Test Mode:", testMode);
   } catch (err) {
     console.error("❌ Error parsing request body:", err.message);
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: "Invalid JSON in request body" }),
-    };
+    return createResponse(400, { error: "Invalid JSON in request body" });
   }
 
   if (!idToken && !testMode) {
     console.log("❌ Missing required parameters: idToken or testMode");
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: "Google ID token is required" }),
-    };
+    return createResponse(400, { error: "Google ID token is required" });
   }
 
   // For mock testing (e.g., Swagger)
   if (testMode) {
     console.log("🧪 Running in test mode - returning mock data");
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        idToken: "test_firebase_id_token_eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9",
-        refreshToken: "test_firebase_refresh_token_AEu4IL2X7Y9k",
-        localId: "test_user_id_123",
-        email: "testuser@example.com",
-        displayName: "Test User",
-        photoUrl: "https://example.com/avatar.jpg",
-        isNewUser: false,
-      }),
-    };
+    return createResponse(200, {
+      idToken: "test_firebase_id_token_eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9",
+      refreshToken: "test_firebase_refresh_token_AEu4IL2X7Y9k",
+      localId: "test_user_id_123",
+      email: "testuser@example.com",
+      displayName: "Test User",
+      photoUrl: "https://example.com/avatar.jpg",
+      isNewUser: false,
+    });
   }
 
   const firebaseApiKey = process.env.FIREBASE_API_KEY;

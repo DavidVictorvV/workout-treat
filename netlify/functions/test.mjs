@@ -1,4 +1,4 @@
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   console.log("✅ Test endpoint hit!");
   console.log("HTTP Method:", event.httpMethod);
   console.log("Headers:", event.headers);

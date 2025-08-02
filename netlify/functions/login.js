@@ -11,6 +11,13 @@ exports.handler = async function (event, context) {
   }
 
   try {
+    console.log('Raw event.body:', event.body);
+    console.log('Event body length:', event.body?.length);
+    
+    if (!event.body) {
+      return createResponse(400, { error: "Request body is required" });
+    }
+    
     const { email, password } = JSON.parse(event.body);
 
     if (!email || !password) {
@@ -64,6 +71,11 @@ exports.handler = async function (event, context) {
 
   } catch (error) {
     console.error('Login error:', error);
+    
+    if (error instanceof SyntaxError && error.message.includes('JSON')) {
+      return createResponse(400, { error: "Invalid JSON in request body" });
+    }
+    
     return createResponse(500, { error: "Internal server error" });
   }
 };

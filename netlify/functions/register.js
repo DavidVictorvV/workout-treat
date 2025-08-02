@@ -1,65 +1,19 @@
+const fetch = require("node-fetch");
 const admin = require("firebase-admin");
-
-// Initialize Firebase Admin SDK (only once)
-if (!admin.apps.length) {
-  console.log("Initializing Firebase Admin SDK...");
-  
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-  console.log("Project ID:", serviceAccount.project_id);
-  console.log("Client Email:", serviceAccount.client_email);
-  console.log("Private Key exists:", !!serviceAccount.private_key);
-  console.log(
-    "Private Key length:",
-    serviceAccount.private_key?.length || 0
-  );
-
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    console.log("✅ Firebase Admin SDK initialized successfully");
-  } catch (initError) {
-    console.error(
-      "❌ Firebase Admin SDK initialization failed:",
-      initError.message
-    );
-    throw initError;
-  }
-} else {
-  console.log("🔄 Firebase Admin SDK already initialized");
-}
-
-const db = admin.firestore();
-console.log("✅ Firestore database reference obtained");
+const { createResponse, handleCORS } = require('./shared/auth-middleware');
+const { getFirestore } = require('./shared/firebase-config');
 
 exports.handler = async function (event, context) {
   console.log("🚀 Email/Password signup function started");
   console.log("HTTP Method:", event.httpMethod);
   console.log("Request body length:", event.body?.length || 0);
 
-  const headers = {
-    "Access-Control-Allow-Origin": "*", // Or replace with your domain for tighter security
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
-
-  // Handle preflight request
-  if (event.httpMethod === "OPTIONS") {
-    console.log("📡 Handling CORS preflight request");
-    return {
-      statusCode: 200,
-      headers,
-      body: "",
-    };
-  }
+  const corsResponse = handleCORS(event);
+  if (corsResponse) return corsResponse;
 
   if (event.httpMethod !== "POST") {
     console.log("❌ Invalid HTTP method:", event.httpMethod);
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: "Method Not Allowed" }),
-    };
+    return createResponse(405, { error: "Method Not Allowed" });
   }
 
   let email, password, displayName;
@@ -76,11 +30,7 @@ exports.handler = async function (event, context) {
     console.log("Password length:", password?.length || 0);
   } catch (parseError) {
     console.error("❌ Error parsing request body:", parseError.message);
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: "Invalid JSON in request body" }),
-    };
+    return createResponse(400, { error: "Invalid JSON in request body" });
   }
 
   if (!email || !password) {
@@ -90,22 +40,14 @@ exports.handler = async function (event, context) {
       "Password:",
       !!password
     );
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: "Email and password are required" }),
-    };
+    return createResponse(400, { error: "Email and password are required" });
   }
 
   if (password.length < 6) {
     console.log("❌ Password too short:", password.length, "characters");
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({
-        error: "Password must be at least 6 characters long",
-      }),
-    };
+    return createResponse(400, {
+      error: "Password must be at least 6 characters long",
+    });
   }
 
   const firebaseApiKey = process.env.FIREBASE_API_KEY;
@@ -143,11 +85,7 @@ exports.handler = async function (event, context) {
         errorMessage = "Invalid email address";
       }
 
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: errorMessage }),
-      };
+      return createResponse(400, { error: errorMessage });
     }
 
     console.log("✅ Firebase signup successful for user:", data.localId);
@@ -159,6 +97,7 @@ exports.handler = async function (event, context) {
     console.log("Display Name:", data.displayName);
 
     try {
+      const db = getFirestore();
       const userData = {
         username:
           data.displayName ||
@@ -193,25 +132,17 @@ exports.handler = async function (event, context) {
     }
 
     console.log("🎉 Signup process completed successfully");
-    return {
-      statusCode: 201,
-      headers,
-      body: JSON.stringify({
-        idToken: data.idToken,
-        refreshToken: data.refreshToken,
-        localId: data.localId,
-        email: data.email,
-        displayName: data.displayName || displayName || null,
-        isNewUser: true,
-      }),
-    };
+    return createResponse(201, {
+      idToken: data.idToken,
+      refreshToken: data.refreshToken,
+      localId: data.localId,
+      email: data.email,
+      displayName: data.displayName || displayName || null,
+      isNewUser: true,
+    });
   } catch (error) {
     console.error("❌ Signup process error:", error.message);
     console.error("🔍 Full error details:", error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: error.message }),
-    };
+    return createResponse(500, { error: error.message });
   }
 };
