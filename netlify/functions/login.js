@@ -1,42 +1,23 @@
 const fetch = require("node-fetch");
+const { createResponse, handleCORS } = require('./shared/auth-middleware');
+const { getUserProfile } = require('./shared/user-helpers');
 
 exports.handler = async function (event, context) {
-  const headers = {
-    "Access-Control-Allow-Origin": "*", // You can change this to a specific origin if needed
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
-
-  // Handle preflight request
-  if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers,
-      body: "",
-    };
-  }
+  const corsResponse = handleCORS(event);
+  if (corsResponse) return corsResponse;
 
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: "Method Not Allowed" }),
-    };
+    return createResponse(405, { error: "Method Not Allowed" });
   }
-
-  const { email, password } = JSON.parse(event.body);
-
-  if (!email || !password) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: "Email and password are required" }),
-    };
-  }
-
-  const firebaseApiKey = process.env.FIREBASE_API_KEY;
 
   try {
+    const { email, password } = JSON.parse(event.body);
+
+    if (!email || !password) {
+      return createResponse(400, { error: "Email and password are required" });
+    }
+
+    const firebaseApiKey = process.env.FIREBASE_API_KEY;
     const response = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`,
       {
@@ -55,7 +36,6 @@ exports.handler = async function (event, context) {
     if (data.error) {
       let errorMessage = data.error.message;
 
-      // Optional: Friendly messages
       if (errorMessage.includes("EMAIL_NOT_FOUND")) {
         errorMessage = "No account found with this email";
       } else if (errorMessage.includes("INVALID_PASSWORD")) {
@@ -64,29 +44,26 @@ exports.handler = async function (event, context) {
         errorMessage = "This user account has been disabled";
       }
 
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ error: errorMessage }),
-      };
+      return createResponse(401, { error: errorMessage });
     }
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        idToken: data.idToken,
-        refreshToken: data.refreshToken,
-        localId: data.localId,
+    const userProfile = await getUserProfile(data.localId);
+
+    return createResponse(200, {
+      user: {
+        id: data.localId,
         email: data.email,
-        displayName: data.displayName || null,
-      }),
-    };
+        displayName: data.displayName || userProfile.displayName || null,
+        totalPoints: userProfile.totalPoints,
+        currentStreak: userProfile.currentStreak,
+        longestStreak: userProfile.longestStreak,
+        memberSince: userProfile.memberSince
+      },
+      token: data.idToken
+    });
+
   } catch (error) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: error.message }),
-    };
+    console.error('Login error:', error);
+    return createResponse(500, { error: "Internal server error" });
   }
 };

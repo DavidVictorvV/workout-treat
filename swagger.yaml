@@ -1,8 +1,8 @@
 openapi: 3.0.0
 info:
-  title: Netlify API
+  title: Workout Treats Backend API
   version: 1.0.0
-  description: Authentication API with email/password and Google Sign-In support
+  description: Comprehensive fitness tracking API with workout completion, points system, store purchases, and statistics
 
 servers:
   - url: /.netlify/functions
@@ -41,7 +41,7 @@ paths:
                 email:
                   type: string
                   format: email
-                  example: "newuser@example.com"
+                  example: "user@example.com"
                 password:
                   type: string
                   format: password
@@ -57,14 +57,12 @@ paths:
               schema:
                 type: object
                 properties:
-                  idToken:
+                  user:
+                    $ref: "#/components/schemas/UserProfile"
+                  token:
                     type: string
                     description: Firebase ID token
                     example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  refreshToken:
-                    type: string
-                    description: Firebase refresh token
-                    example: "AEu4IL2X7Y9k..."
         "400":
           description: Bad request - missing email or password
           content:
@@ -77,340 +75,566 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
 
-  /register:
-    post:
-      summary: Register new user with email and password
-      tags:
-        - Authentication
-      description: |
-        Create a new user account with email and password. 
-        Returns Firebase tokens upon successful registration.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  format: email
-                  example: "newuser@example.com"
-                password:
-                  type: string
-                  format: password
-                  minLength: 6
-                  example: "password123"
-                displayName:
-                  type: string
-                  description: Optional display name for the user
-                  example: "John Doe"
-              required:
-                - email
-                - password
-      responses:
-        "201":
-          description: Registration successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  idToken:
-                    type: string
-                    description: Firebase ID token
-                    example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  refreshToken:
-                    type: string
-                    description: Firebase refresh token
-                    example: "AEu4IL2X7Y9k..."
-                  localId:
-                    type: string
-                    description: Firebase user ID
-                    example: "firebase_user_id_123"
-                  email:
-                    type: string
-                    format: email
-                    description: User's email address
-                    example: "newuser@example.com"
-                  displayName:
-                    type: string
-                    nullable: true
-                    description: User's display name
-                    example: "John Doe"
-                  isNewUser:
-                    type: boolean
-                    description: Always true for registration
-                    example: true
-        "400":
-          description: Bad request - validation errors
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              examples:
-                missing_fields:
-                  value:
-                    error: "Email and password are required"
-                weak_password:
-                  value:
-                    error: "Password must be at least 6 characters long"
-                email_exists:
-                  value:
-                    error: "An account with this email already exists"
-                invalid_email:
-                  value:
-                    error: "Invalid email address"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /google-signin:
-    post:
-      summary: Google Sign-In authentication
-      tags:
-        - Authentication
-      description: |
-        Sign in using Google ID token. The client should first authenticate with Google
-        and obtain an ID token, then send it to this endpoint to get Firebase tokens.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                idToken:
-                  type: string
-                  description: Google ID token obtained from Google Sign-In
-                  example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXVkIjoiMTIzNDU2Nzg5MC1hYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ei5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsInN1YiI6IjEyMzQ1Njc4OTAifQ..."
-                testMode:
-                  type: boolean
-                  description: Enable test mode for Swagger testing (returns mock data without calling Firebase)
-                  example: true
-                  default: false
-              required:
-                - idToken
-      responses:
-        "200":
-          description: Google Sign-In success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  idToken:
-                    type: string
-                    description: Firebase ID token
-                    example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  refreshToken:
-                    type: string
-                    description: Firebase refresh token
-                    example: "AEu4IL2X7Y9k..."
-                  localId:
-                    type: string
-                    description: Firebase user ID
-                    example: "firebase_user_id_123"
-                  email:
-                    type: string
-                    format: email
-                    description: User's email address
-                    example: "user@gmail.com"
-                  displayName:
-                    type: string
-                    description: User's display name
-                    example: "John Doe"
-                  photoUrl:
-                    type: string
-                    format: uri
-                    description: User's profile photo URL
-                    example: "https://lh3.googleusercontent.com/a/photo.jpg"
-                  isNewUser:
-                    type: boolean
-                    description: Whether this is a new user registration
-                    example: false
-        "400":
-          description: Bad request - missing Google ID token
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          description: Unauthorized - invalid Google ID token
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /get-user:
+  /auth-profile:
     get:
-      summary: Get user data by userId or displayName
+      summary: Get user profile with fitness data
       tags:
-        - Account Management
-      description: |
-        Retrieves user information based on a single `id` query parameter.
-        - First attempts to fetch from Firebase Authentication by user ID.
-        - If not found, falls back to Firestore to look up by display name.
-
-        **Note:** This method assumes no collision between display names and user IDs.
-      parameters:
-        - name: id
-          in: query
-          required: true
-          schema:
-            type: string
-            example: "John Doe"
-          description: |
-            Either a Firebase user ID (localId) or a display name.
-            The backend will attempt both methods to find the user.
-      responses:
-        "200":
-          description: User found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  userId:
-                    type: string
-                    description: Firebase user ID
-                    example: "firebase_user_id_123"
-                  email:
-                    type: string
-                    format: email
-                    description: User's email
-                    example: "newuser@example.com"
-                  displayName:
-                    type: string
-                    description: Display name of the user
-                    example: "John Doe"
-                  photoUrl:
-                    type: string
-                    format: uri
-                    description: Profile photo URL
-                    example: "https://lh3.googleusercontent.com/a/photo.jpg"
-                  source:
-                    type: string
-                    enum: [auth, firestore]
-                    description: Where the user was found (auth = Firebase Auth, firestore = Firestore)
-                    example: "auth"
-        "400":
-          description: Missing `id` parameter
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /delete-account:
-    delete:
-      summary: Delete user account and all associated data
-      tags:
-        - Account Management
-      description: |
-        Permanently delete the user account from Firebase Authentication and remove all
-        associated data from Firestore. This action cannot be undone.
-
-        **Requirements:**
-        - Valid Firebase ID token in Authorization header
-        - User must be authenticated
-
-        **What gets deleted:**
-        - User account from Firebase Authentication
-        - userData document from Firestore
-        - Any other user-related documents across collections
+        - Authentication
       security:
         - BearerAuth: []
       responses:
         "200":
-          description: Account deleted successfully
+          description: User profile retrieved successfully
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-                    description: Success message
-                    example: "Account deleted successfully"
-                  userId:
-                    type: string
-                    description: ID of the deleted user
-                    example: "firebase_user_id_123"
-                  email:
-                    type: string
-                    format: email
-                    description: Email of the deleted user
-                    example: "newuser@example.com"
-                  deletedAt:
-                    type: string
-                    format: date-time
-                    description: ISO timestamp of when the account was deleted
-                    example: "2024-01-15T10:30:45.123Z"
+                  user:
+                    $ref: "#/components/schemas/UserProfile"
         "401":
-          description: Unauthorized - missing, invalid, or expired token
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-              examples:
-                missing_token:
-                  value:
-                    error: "Authorization header with Bearer token required"
-                invalid_token:
-                  value:
-                    error: "Invalid or expired token"
-        "405":
-          description: Method not allowed - must use DELETE
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
+    put:
+      summary: Update user profile
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                  example: "John Smith"
+              required:
+                - displayName
+      responses:
+        "200":
+          description: Profile updated successfully
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  error:
-                    type: string
-                    description: Error message
-                    example: "Failed to delete account"
-                  details:
-                    type: string
-                    description: Detailed error information
-                    example: "Firebase authentication error details"
+                  user:
+                    $ref: "#/components/schemas/UserProfile"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /workouts:
+    get:
+      summary: Get available workouts
+      tags:
+        - Workouts
+      responses:
+        "200":
+          description: List of available workouts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workouts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Workout"
+
+  /workouts-complete:
+    post:
+      summary: Complete a workout
+      tags:
+        - Workouts
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workoutId:
+                  type: string
+                  example: "workout_1"
+              required:
+                - workoutId
+      responses:
+        "200":
+          description: Workout completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  pointsEarned:
+                    type: integer
+                    example: 15
+                  newTotalPoints:
+                    type: integer
+                    example: 315
+                  streakInfo:
+                    type: object
+                    properties:
+                      currentStreak:
+                        type: integer
+                        example: 3
+                      longestStreak:
+                        type: integer
+                        example: 5
+                      isNewRecord:
+                        type: boolean
+                        example: false
+        "400":
+          description: Bad request - workout already completed today or invalid workout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /workouts-history:
+    get:
+      summary: Get workout history
+      tags:
+        - Workouts
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+            example: "2024-01-01"
+          description: Start date for filtering (YYYY-MM-DD)
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+            example: "2024-01-31"
+          description: End date for filtering (YYYY-MM-DD)
+      responses:
+        "200":
+          description: Workout history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workouts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WorkoutHistory"
+
+  /store-items:
+    get:
+      summary: Get available store items
+      tags:
+        - Store
+      responses:
+        "200":
+          description: List of available store items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StoreItem"
+
+  /store-purchase:
+    post:
+      summary: Purchase a store item
+      tags:
+        - Store
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                itemId:
+                  type: string
+                  example: "item_1"
+              required:
+                - itemId
+      responses:
+        "200":
+          description: Purchase successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  pointsSpent:
+                    type: integer
+                    example: 100
+                  newTotalPoints:
+                    type: integer
+                    example: 215
+                  item:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "item_1"
+                      name:
+                        type: string
+                        example: "Coca-Cola"
+                      description:
+                        type: string
+                        example: "Classic 330ml"
+        "400":
+          description: Insufficient points or invalid item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /store-purchases:
+    get:
+      summary: Get purchase history
+      tags:
+        - Store
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Purchase history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  purchases:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Purchase"
+
+  /stats-overview:
+    get:
+      summary: Get user statistics overview
+      tags:
+        - Statistics
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Statistics overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsOverview"
+
+  /stats-workouts:
+    get:
+      summary: Get workout statistics
+      tags:
+        - Statistics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+            example: "2024-01-01"
+          description: Start date for filtering (YYYY-MM-DD)
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+            example: "2024-01-31"
+          description: End date for filtering (YYYY-MM-DD)
+      responses:
+        "200":
+          description: Workout statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workouts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WorkoutHistory"
+                  summary:
+                    type: object
+                    properties:
+                      totalWorkouts:
+                        type: integer
+                        example: 10
+                      pointsEarned:
+                        type: integer
+                        example: 150
+                      uniqueWorkoutTypes:
+                        type: integer
+                        example: 5
+                      activeDays:
+                        type: integer
+                        example: 8
+
+  /stats-charts:
+    get:
+      summary: Get chart data for statistics
+      tags:
+        - Statistics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [thisMonth, lastMonth]
+            example: "thisMonth"
+          description: Predefined period for chart data
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+            example: "2024-01-01"
+          description: Custom start date (YYYY-MM-DD)
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+            example: "2024-01-31"
+          description: Custom end date (YYYY-MM-DD)
+      responses:
+        "200":
+          description: Chart data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chartData:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                          example: "2024-01-01"
+                        overall:
+                          type: integer
+                          example: 2
+                  workoutTypes:
+                    type: array
+                    items:
+                      type: string
+                    example: ["Running", "Push-ups", "Cycling"]
+                  summary:
+                    type: object
+                    properties:
+                      totalWorkouts:
+                        type: integer
+                        example: 25
+                      activeDays:
+                        type: integer
+                        example: 15
+                      pointsEarned:
+                        type: integer
+                        example: 375
+                      averagePerDay:
+                        type: number
+                        format: float
+                        example: 1.67
 
 components:
   schemas:
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "firebase_user_id_123"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        displayName:
+          type: string
+          example: "John Doe"
+        totalPoints:
+          type: integer
+          example: 315
+        currentStreak:
+          type: integer
+          example: 3
+        longestStreak:
+          type: integer
+          example: 5
+        lastWorkoutDate:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
+        memberSince:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+
+    Workout:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "workout_1"
+        name:
+          type: string
+          example: "Running or Jogging"
+        icon:
+          type: string
+          example: "🏃‍♂️"
+        category:
+          type: string
+          enum: [outdoor, indoor]
+          example: "outdoor"
+        duration:
+          type: string
+          example: "30 min"
+        points:
+          type: integer
+          example: 15
+
+    WorkoutHistory:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "history_1"
+        workoutName:
+          type: string
+          example: "Running or Jogging"
+        workoutIcon:
+          type: string
+          example: "🏃‍♂️"
+        category:
+          type: string
+          example: "outdoor"
+        pointsEarned:
+          type: integer
+          example: 15
+        completedAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
+        date:
+          type: string
+          format: date
+          example: "2024-01-15"
+
+    StoreItem:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "item_1"
+        name:
+          type: string
+          example: "Coca-Cola"
+        description:
+          type: string
+          example: "Classic 330ml"
+        icon:
+          type: string
+          example: "🥤"
+        category:
+          type: string
+          enum: [all, drinks]
+          example: "drinks"
+        price:
+          type: integer
+          example: 100
+        isAvailable:
+          type: boolean
+          example: true
+
+    Purchase:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "purchase_1"
+        itemName:
+          type: string
+          example: "Coca-Cola"
+        itemIcon:
+          type: string
+          example: "🥤"
+        pointsSpent:
+          type: integer
+          example: 100
+        purchasedAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
+
+    StatsOverview:
+      type: object
+      properties:
+        totalPoints:
+          type: integer
+          example: 315
+        currentStreak:
+          type: integer
+          example: 3
+        longestStreak:
+          type: integer
+          example: 5
+        totalWorkouts:
+          type: integer
+          example: 25
+        totalPointsEarned:
+          type: integer
+          example: 375
+        totalPointsSpent:
+          type: integer
+          example: 60
+        uniqueWorkoutTypes:
+          type: integer
+          example: 8
+        memberSince:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+
     Error:
       type: object
       properties:
@@ -430,8 +654,12 @@ components:
 
 tags:
   - name: Authentication
-    description: User authentication endpoints
-  - name: Account Management
-    description: Account management operations
+    description: User authentication and profile management
+  - name: Workouts
+    description: Workout management and completion
+  - name: Store
+    description: Store items and purchases
+  - name: Statistics
+    description: User statistics and analytics
   - name: Testing
     description: Testing and health check endpoints
