@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 
 let firebaseApp;
+let firestoreInstance;
 
 function initializeFirebase() {
   if (!firebaseApp) {
@@ -32,14 +33,16 @@ function initializeFirebase() {
 
 function getFirestore() {
   try {
-    const app = initializeFirebase();
-    const db = admin.firestore(app);
+    if (!firestoreInstance) {
+      const app = initializeFirebase();
+      firestoreInstance = admin.firestore(app);
+      
+      firestoreInstance.settings({
+        ignoreUndefinedProperties: true
+      });
+    }
     
-    db.settings({
-      ignoreUndefinedProperties: true
-    });
-    
-    return db;
+    return firestoreInstance;
   } catch (error) {
     console.error('Firestore connection error:', error.message);
     throw new Error('Database connection failed');
