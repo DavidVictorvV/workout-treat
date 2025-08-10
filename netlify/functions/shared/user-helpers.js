@@ -8,7 +8,7 @@ async function getUserProfile(userId) {
   if (!userDoc.exists) {
     const defaultProfile = {
       id: userId,
-      totalPoints: 300,
+      totalPoints: 100,
       currentStreak: 0,
       longestStreak: 0,
       lastWorkoutDate: null,

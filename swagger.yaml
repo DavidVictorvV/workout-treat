@@ -213,7 +213,7 @@ paths:
                     example: 15
                   newTotalPoints:
                     type: integer
-                    example: 315
+                    example: 115
                   streakInfo:
                     type: object
                     properties:
@@ -327,7 +327,7 @@ paths:
                     example: 100
                   newTotalPoints:
                     type: integer
-                    example: 215
+                    example: 15
                   item:
                     type: object
                     properties:
@@ -497,7 +497,7 @@ paths:
                         example: 15
                       pointsEarned:
                         type: integer
-                        example: 375
+                        example: 175
                       averagePerDay:
                         type: number
                         format: float
@@ -520,7 +520,7 @@ components:
           example: "John Doe"
         totalPoints:
           type: integer
-          example: 315
+          example: 115
         currentStreak:
           type: integer
           example: 3
@@ -637,7 +637,7 @@ components:
       properties:
         totalPoints:
           type: integer
-          example: 315
+          example: 115
         currentStreak:
           type: integer
           example: 3
@@ -649,7 +649,7 @@ components:
           example: 25
         totalPointsEarned:
           type: integer
-          example: 375
+          example: 175
         totalPointsSpent:
           type: integer
           example: 60
