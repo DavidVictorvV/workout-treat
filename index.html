@@ -3,6 +3,186 @@
   <head>
     <title>Firebase Auth Swagger</title>
     <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css" />
+    <style>
+      /* Dark mode theme for Swagger UI */
+      body {
+        background-color: #1a1a1a !important;
+        color: #ffffff !important;
+      }
+
+      /* Main container styling */
+      .swagger-ui {
+        background-color: #1a1a1a !important;
+        color: #ffffff !important;
+      }
+
+      /* Scheme container - specifically target this */
+      .swagger-ui .scheme-container {
+        background-color: #2d3748 !important;
+        border: 1px solid #4a5568 !important;
+        box-shadow: none !important;
+      }
+
+      .swagger-ui .scheme-container .schemes > label {
+        color: #ffffff !important;
+      }
+
+      .swagger-ui .scheme-container .schemes > label select {
+        background-color: #4a5568 !important;
+        color: #ffffff !important;
+        border: 1px solid #718096 !important;
+      }
+
+      /* Info section */
+      .swagger-ui .info {
+        background-color: #1a1a1a !important;
+      }
+
+      .swagger-ui .info .title {
+        color: #ffffff !important;
+      }
+
+      .swagger-ui .info .description,
+      .swagger-ui .info .description p {
+        color: #e2e8f0 !important;
+      }
+
+      /* Topbar */
+      .swagger-ui .topbar {
+        background-color: #2d3748 !important;
+        border-bottom: 1px solid #4a5568 !important;
+      }
+
+      .swagger-ui .topbar .download-url-wrapper .select-label {
+        color: #ffffff !important;
+      }
+
+      .swagger-ui .topbar .download-url-wrapper input[type="text"] {
+        background-color: #4a5568 !important;
+        color: #ffffff !important;
+        border: 1px solid #718096 !important;
+      }
+
+      /* Operations */
+      .swagger-ui .opblock {
+        background-color: #2d3748 !important;
+        border: 1px solid #4a5568 !important;
+      }
+
+      .swagger-ui .opblock .opblock-summary {
+        background-color: #374151 !important;
+        border-color: #4a5568 !important;
+      }
+
+      .swagger-ui .opblock .opblock-summary-method {
+        background-color: #4a5568 !important;
+        color: #ffffff !important;
+      }
+
+      .swagger-ui .opblock .opblock-summary-path {
+        color: #e2e8f0 !important;
+      }
+
+      /* Parameters and responses */
+      .swagger-ui .parameters-container {
+        background-color: #1a1a1a !important;
+      }
+
+      .swagger-ui .responses-wrapper {
+        background-color: #1a1a1a !important;
+      }
+
+      /* Tables */
+      .swagger-ui table {
+        background-color: #2d3748 !important;
+      }
+
+      .swagger-ui table thead tr th {
+        background-color: #374151 !important;
+        color: #ffffff !important;
+        border-color: #4a5568 !important;
+      }
+
+      .swagger-ui table tbody tr td {
+        background-color: #2d3748 !important;
+        color: #e2e8f0 !important;
+        border-color: #4a5568 !important;
+      }
+
+      /* Models */
+      .swagger-ui .model-container {
+        background-color: #2d3748 !important;
+        border: 1px solid #4a5568 !important;
+      }
+
+      .swagger-ui .model {
+        background-color: #2d3748 !important;
+        color: #ffffff !important;
+      }
+
+      /* Buttons */
+      .swagger-ui .btn {
+        background-color: #4a5568 !important;
+        color: #ffffff !important;
+        border: 1px solid #718096 !important;
+      }
+
+      .swagger-ui .btn:hover {
+        background-color: #718096 !important;
+      }
+
+      /* Try it out */
+      .swagger-ui .try-out__btn {
+        background-color: #3182ce !important;
+        color: #ffffff !important;
+        border: 1px solid #3182ce !important;
+      }
+
+      /* Execute button */
+      .swagger-ui .execute-wrapper .btn {
+        background-color: #38a169 !important;
+        border-color: #38a169 !important;
+      }
+
+      /* Response */
+      .swagger-ui .responses .response .response-col_status {
+        color: #ffffff !important;
+      }
+
+      .swagger-ui .response-col_description {
+        color: #e2e8f0 !important;
+      }
+
+      /* Code blocks */
+      .swagger-ui .highlight-code {
+        background-color: #1a202c !important;
+      }
+
+      .swagger-ui .highlight-code pre {
+        background-color: #1a202c !important;
+        color: #e2e8f0 !important;
+      }
+
+      /* Input fields */
+      .swagger-ui input[type="text"],
+      .swagger-ui input[type="email"],
+      .swagger-ui input[type="password"],
+      .swagger-ui textarea,
+      .swagger-ui select {
+        background-color: #4a5568 !important;
+        color: #ffffff !important;
+        border: 1px solid #718096 !important;
+      }
+
+      .swagger-ui input[type="text"]:focus,
+      .swagger-ui input[type="email"]:focus,
+      .swagger-ui input[type="password"]:focus,
+      .swagger-ui textarea:focus,
+      .swagger-ui select:focus {
+        background-color: #4a5568 !important;
+        border-color: #63b3ed !important;
+      }
+    </style>
   </head>
   <body>
     <div id="swagger-ui"></div>
@@ -11,6 +191,7 @@
       SwaggerUIBundle({
         url: "swagger.yaml",
         dom_id: "#swagger-ui",
+        theme: "dark",
       });
     </script>
   </body>

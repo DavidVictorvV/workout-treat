@@ -14,7 +14,11 @@ async function getUserProfile(userId) {
       lastWorkoutDate: null,
       memberSince: new Date().toISOString(),
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      // New fields for enhanced system
+      fitnessLevel: 1, // User's overall fitness level (1-10) - default to 1 if not set during registration
+      workoutFrequency: {}, // Track how often each workout type is done (for variety penalty)
+      weeklyWorkoutTypes: [] // Track workout types done this week (for variety tracking)
     };
     
     await db.collection('users').doc(userId).set(defaultProfile);

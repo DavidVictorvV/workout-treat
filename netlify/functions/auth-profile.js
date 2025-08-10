@@ -24,35 +24,48 @@ exports.handler = async function (event, context) {
           currentStreak: userProfile.currentStreak,
           longestStreak: userProfile.longestStreak,
           lastWorkoutDate: userProfile.lastWorkoutDate,
-          memberSince: userProfile.memberSince
+          memberSince: userProfile.memberSince,
+          fitnessLevel: userProfile.fitnessLevel
         }
       });
     }
 
     if (event.httpMethod === "PUT") {
-      const { displayName } = JSON.parse(event.body);
+      const { displayName, fitnessLevel } = JSON.parse(event.body);
 
-      if (!displayName || displayName.trim() === '') {
-        return createResponse(400, { error: "Display name is required" });
+      // Validate inputs
+      if (displayName !== undefined && (!displayName || displayName.trim() === '')) {
+        return createResponse(400, { error: "Display name cannot be empty" });
+      }
+      
+      if (fitnessLevel !== undefined && (fitnessLevel < 1 || fitnessLevel > 10 || !Number.isInteger(fitnessLevel))) {
+        return createResponse(400, { error: "Fitness level must be an integer between 1 and 10" });
       }
 
-      const auth = getAuth();
-      await auth.updateUser(userId, { displayName: displayName.trim() });
+      // Update Firebase display name if provided
+      if (displayName !== undefined) {
+        const auth = getAuth();
+        await auth.updateUser(userId, { displayName: displayName.trim() });
+      }
       
-      const updatedProfile = await updateUserProfile(userId, { 
-        displayName: displayName.trim() 
-      });
+      // Prepare update object
+      const updates = {};
+      if (displayName !== undefined) updates.displayName = displayName.trim();
+      if (fitnessLevel !== undefined) updates.fitnessLevel = fitnessLevel;
+      
+      const updatedProfile = await updateUserProfile(userId, updates);
 
       return createResponse(200, {
         user: {
           id: userId,
           email: updatedProfile.email,
-          displayName: displayName.trim(),
+          displayName: updatedProfile.displayName || displayName?.trim(),
           totalPoints: updatedProfile.totalPoints,
           currentStreak: updatedProfile.currentStreak,
           longestStreak: updatedProfile.longestStreak,
           lastWorkoutDate: updatedProfile.lastWorkoutDate,
-          memberSince: updatedProfile.memberSince
+          memberSince: updatedProfile.memberSince,
+          fitnessLevel: updatedProfile.fitnessLevel
         }
       });
     }

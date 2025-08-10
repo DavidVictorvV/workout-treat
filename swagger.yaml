@@ -27,72 +27,6 @@ paths:
                     example: "Function is working!"
 
 
-  /google-signin:
-    post:
-      summary: Sign in with Google OAuth
-      tags:
-        - Authentication
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                idToken:
-                  type: string
-                  description: Google ID token
-                  example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
-                testMode:
-                  type: boolean
-                  description: Enable test mode for mock responses
-                  example: false
-      responses:
-        "200":
-          description: Google sign-in successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  idToken:
-                    type: string
-                    description: Firebase ID token
-                    example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  refreshToken:
-                    type: string
-                    description: Firebase refresh token
-                    example: "AEu4IL2X7Y9k..."
-                  localId:
-                    type: string
-                    description: User ID
-                    example: "firebase_user_id_123"
-                  email:
-                    type: string
-                    format: email
-                    example: "user@gmail.com"
-                  displayName:
-                    type: string
-                    example: "John Doe"
-                  photoUrl:
-                    type: string
-                    format: uri
-                    example: "https://lh3.googleusercontent.com/..."
-                  isNewUser:
-                    type: boolean
-                    example: false
-        "400":
-          description: Bad request - missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          description: Unauthorized - invalid Google token
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
 
   /get-user:
     get:
@@ -161,8 +95,13 @@ paths:
                 displayName:
                   type: string
                   example: "John Smith"
-              required:
-                - displayName
+                  description: "User's display name"
+                fitnessLevel:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  example: 5
+                  description: "User's fitness level from 1 (beginner) to 10 (elite)"
       responses:
         "200":
           description: Profile updated successfully
@@ -179,6 +118,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /delete-user:
+    delete:
+      summary: Delete user account and all associated data
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Account deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Account and all associated data have been permanently deleted"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Deletion failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to delete account"
+                  details:
+                    type: string
+                    example: "Specific error message"
 
   /workouts:
     get:

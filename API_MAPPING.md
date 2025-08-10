@@ -25,6 +25,7 @@ Your required API endpoints map to these Netlify functions:
 | Required Endpoint | Netlify Function | Method |
 |-------------------|------------------|--------|
 | `GET /api/workouts` | `/.netlify/functions/workouts` | GET |
+| `GET /api/workouts/daily` | `/.netlify/functions/workouts-daily` | GET |
 | `POST /api/workouts/complete` | `/.netlify/functions/workouts-complete` | POST |
 | `GET /api/workouts/history` | `/.netlify/functions/workouts-history` | GET |
 | `GET /api/workouts/stats` | `/.netlify/functions/stats-workouts` | GET |
