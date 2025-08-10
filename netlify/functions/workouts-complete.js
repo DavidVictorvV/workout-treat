@@ -44,42 +44,126 @@ exports.handler = async function (event, context) {
     const db = getFirestore();
     
     const workoutDoc = await db.collection('workouts').doc(workoutId).get();
-    if (!workoutDoc.exists || !workoutDoc.data().isActive) {
-      return createResponse(404, { error: "Workout not found or inactive" });
+    if (!workoutDoc.exists) {
+      return createResponse(404, { error: "Workout not found" });
     }
-
+    
     const workout = workoutDoc.data();
+    // Check if workout is active (default to true if isActive field doesn't exist)
+    if (workout.isActive === false) {
+      return createResponse(404, { error: "Workout is inactive" });
+    }
+    
+    // Validate required workout fields
+    if (!workout.name || typeof workout.points !== 'number' || workout.points < 0) {
+      console.error('Invalid workout data:', workout);
+      return createResponse(500, { error: "Workout data is invalid" });
+    }
     const completedAt = new Date().toISOString();
     const dateStr = format(new Date(completedAt), 'yyyy-MM-dd');
 
-    const alreadyCompleted = await hasCompletedWorkoutToday(userId, workoutId, completedAt);
-    if (alreadyCompleted) {
-      return createResponse(400, { error: "Workout already completed today" });
-    }
+    // Use a transaction to prevent race conditions
+    const result = await db.runTransaction(async (transaction) => {
+      // Check if workout already completed today using new structure
+      const dailyWorkoutRef = db.collection('users').doc(userId).collection('daily_workouts').doc(dateStr);
+      const dailyWorkoutDoc = await transaction.get(dailyWorkoutRef);
+      
+      if (dailyWorkoutDoc.exists && dailyWorkoutDoc.data().workouts && dailyWorkoutDoc.data().workouts.includes(workoutId)) {
+        throw new Error("Workout already completed today");
+      }
 
-    const userProfile = await getUserProfile(userId);
-    const streakInfo = await calculateStreak(userId, completedAt);
-    
-    const historyEntry = {
-      id: uuidv4(),
-      userId,
-      workoutId,
-      pointsEarned: workout.points,
-      completedAt,
-      date: dateStr
-    };
+      // Also check individual workout history for duplicates
+      const individualHistoryQuery = db.collection('users').doc(userId).collection('workout_history')
+        .where('workoutId', '==', workoutId)
+        .where('date', '==', dateStr)
+        .limit(1);
+      
+      const individualHistorySnapshot = await individualHistoryQuery.get();
+      if (!individualHistorySnapshot.empty) {
+        throw new Error("Workout already completed today");
+      }
 
-    const newTotalPoints = userProfile.totalPoints + workout.points;
+      // Also check old global structure for backward compatibility
+      const oldWorkoutQuery = db.collection('workout_history')
+        .where('userId', '==', userId)
+        .where('workoutId', '==', workoutId)
+        .where('date', '==', dateStr)
+        .limit(1);
+      
+      const oldWorkoutSnapshot = await oldWorkoutQuery.get();
+      if (!oldWorkoutSnapshot.empty) {
+        throw new Error("Workout already completed today");
+      }
 
-    await Promise.all([
-      db.collection('workout_history').doc(historyEntry.id).set(historyEntry),
-      updateUserProfile(userId, {
+      const userProfile = await getUserProfile(userId);
+      const streakInfo = await calculateStreak(userId, completedAt);
+      
+      const newTotalPoints = userProfile.totalPoints + workout.points;
+
+      // Create individual workout history entry for complete historical record
+      const workoutHistoryRef = db.collection('users').doc(userId).collection('workout_history').doc();
+      transaction.set(workoutHistoryRef, {
+        workoutId: workoutId,
+        workoutName: workout.name,
+        workoutIcon: workout.icon,
+        category: workout.category,
+        pointsEarned: workout.points,
+        completedAt: completedAt,
+        date: dateStr,
+        userId: userId
+      });
+
+      // Update or create daily workout document (for daily summaries and duplicate checking)
+      if (dailyWorkoutDoc.exists) {
+        // Add workout to existing day
+        const dailyData = dailyWorkoutDoc.data();
+        transaction.update(dailyWorkoutRef, {
+          workouts: [...dailyData.workouts, workoutId],
+          totalPoints: dailyData.totalPoints + workout.points,
+          lastCompletedAt: completedAt,
+          workoutDetails: {
+            ...dailyData.workoutDetails,
+            [workoutId]: {
+              name: workout.name,
+              icon: workout.icon,
+              category: workout.category,
+              points: workout.points,
+              completedAt: completedAt
+            }
+          }
+        });
+      } else {
+        // Create new daily workout document
+        transaction.set(dailyWorkoutRef, {
+          date: dateStr,
+          workouts: [workoutId],
+          totalPoints: workout.points,
+          firstCompletedAt: completedAt,
+          lastCompletedAt: completedAt,
+          workoutDetails: {
+            [workoutId]: {
+              name: workout.name,
+              icon: workout.icon,
+              category: workout.category,
+              points: workout.points,
+              completedAt: completedAt
+            }
+          }
+        });
+      }
+
+      // Update user profile
+      transaction.update(db.collection('users').doc(userId), {
         totalPoints: newTotalPoints,
         currentStreak: streakInfo.currentStreak,
         longestStreak: streakInfo.longestStreak,
         lastWorkoutDate: completedAt
-      })
-    ]);
+      });
+
+      return { newTotalPoints, streakInfo };
+    });
+
+    const { newTotalPoints, streakInfo } = result;
 
     return createResponse(200, {
       success: true,
@@ -90,6 +174,10 @@ exports.handler = async function (event, context) {
 
   } catch (error) {
     console.error('Complete workout error:', error);
+    
+    if (error.message === 'Workout already completed today') {
+      return createResponse(400, { error: "Workout already completed today" });
+    }
     
     if (error.message.includes('Authorization') || error.message.includes('token')) {
       return createResponse(401, { error: error.message });

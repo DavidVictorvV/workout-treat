@@ -1,4 +1,5 @@
 const admin = require("firebase-admin");
+const fetch = require("node-fetch");
 const { createResponse, handleCORS } = require('./shared/auth-middleware');
 const { getFirestore } = require('./shared/firebase-config');
 
@@ -74,15 +75,11 @@ exports.handler = async function (event, context) {
     console.log("Firebase raw response text:", rawText);
 
     if (!contentType.includes("application/json")) {
-      return {
-        statusCode: 502,
-        headers,
-        body: JSON.stringify({
-          error: "Unexpected response format from Firebase",
-          status: firebaseResponse.status,
-          rawResponse: rawText,
-        }),
-      };
+      return createResponse(502, {
+        error: "Unexpected response format from Firebase",
+        status: firebaseResponse.status,
+        rawResponse: rawText,
+      });
     }
 
     const data = JSON.parse(rawText);
@@ -94,11 +91,7 @@ exports.handler = async function (event, context) {
         errorMessage = "Invalid Google ID token or provider response";
       }
 
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ error: errorMessage }),
-      };
+      return createResponse(401, { error: errorMessage });
     }
 
     // Create Firestore document for new users
@@ -109,26 +102,26 @@ exports.handler = async function (event, context) {
       console.log("Display Name:", data.displayName);
 
       try {
+        const db = getFirestore();
         const userData = {
-          username:
-            data.displayName || data.email?.split("@")[0] || "Unknown User",
-          userId: data.localId,
-          email: data.email,
-          dateCreated: admin.firestore.FieldValue.serverTimestamp(),
-          photoUrl: data.photoUrl || null,
+          displayName: data.displayName || data.email?.split("@")[0] || "Unknown User",
+          totalPoints: 300,
+          currentStreak: 0,
+          longestStreak: 0,
+          lastWorkoutDate: null,
+          memberSince: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         };
 
-        console.log("📄 Creating userData document with data:", {
-          ...userData,
-          dateCreated: "[ServerTimestamp]", // Don't log the actual timestamp object
-        });
+        console.log("📄 Creating user profile document with data:", userData);
 
-        await db.collection("userData").doc(data.localId).set(userData);
+        await db.collection("users").doc(data.localId).set(userData);
         console.log(
           "✅ Successfully created userData document for user:",
           data.localId
         );
-        console.log("📍 Document path: userData/" + data.localId);
+        console.log("📍 Document path: users/" + data.localId);
       } catch (firestoreError) {
         console.error(
           "❌ Error creating Firestore document:",
@@ -142,26 +135,18 @@ exports.handler = async function (event, context) {
       console.log("🔄 Existing user - skipping Firestore document creation");
     }
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        idToken: data.idToken,
-        refreshToken: data.refreshToken,
-        localId: data.localId,
-        email: data.email,
-        displayName: data.displayName,
-        photoUrl: data.photoUrl,
-        isNewUser: data.isNewUser || false,
-      }),
-    };
+    return createResponse(200, {
+      idToken: data.idToken,
+      refreshToken: data.refreshToken,
+      localId: data.localId,
+      email: data.email,
+      displayName: data.displayName,
+      photoUrl: data.photoUrl,
+      isNewUser: data.isNewUser || false,
+    });
   } catch (error) {
     console.error("❌ Firebase sign-in error:", error.message);
     console.error("🔍 Full error details:", error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: error.message }),
-    };
+    return createResponse(500, { error: error.message });
   }
 };

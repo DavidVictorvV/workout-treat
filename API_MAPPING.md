@@ -8,7 +8,7 @@ Your required API endpoints map to these Netlify functions:
 
 | Required Endpoint | Netlify Function | Method |
 |-------------------|------------------|--------|
-| `POST /api/auth/login` | `/.netlify/functions/login` | POST |
+| `POST /api/auth/google-signin` | `/.netlify/functions/google-signin` | POST |
 | `GET /api/auth/profile` | `/.netlify/functions/auth-profile` | GET |
 | `PUT /api/auth/profile` | `/.netlify/functions/auth-profile` | PUT |
 
@@ -57,6 +57,16 @@ FIREBASE_DATABASE_URL=your_firebase_database_url
 
 ## Authentication
 
+The backend uses **Google/Firebase authentication only**. 
+
+### Authentication Flow:
+1. User signs in with Google on frontend
+2. Firebase returns ID token  
+3. Frontend stores user data with Firebase token
+4. All API calls use Firebase token in Authorization header
+5. Backend verifies Firebase token for each request
+
+### Protected Endpoints:
 All endpoints except `/workouts` and `/store-items` require authentication.
 
 Include the Firebase ID token in the Authorization header:
@@ -87,11 +97,11 @@ The following Firestore collections are created:
 
 ## Sample API Calls
 
-### Login
+### Google Sign-In
 ```bash
-curl -X POST https://your-site.netlify.app/.netlify/functions/login \
+curl -X POST https://your-site.netlify.app/.netlify/functions/google-signin \
   -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "password123"}'
+  -d '{"idToken": "google_id_token_from_frontend"}'
 ```
 
 ### Get Profile

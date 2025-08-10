@@ -47,35 +47,123 @@ exports.handler = async function (event, context) {
     const endStr = format(end, 'yyyy-MM-dd');
 
     const db = getFirestore();
-    const historySnapshot = await db.collection('workout_history')
-      .where('userId', '==', userId)
-      .where('date', '>=', startStr)
-      .where('date', '<=', endStr)
-      .get();
-
     const workoutsByDate = {};
     const workoutTypesSet = new Set();
     let totalWorkouts = 0;
     let totalPointsEarned = 0;
 
-    for (const doc of historySnapshot.docs) {
-      const historyData = doc.data();
-      const date = historyData.date;
-      
-      const workoutDoc = await db.collection('workouts').doc(historyData.workoutId).get();
-      const workoutData = workoutDoc.data();
-      const workoutName = workoutData?.name || 'Unknown Workout';
-      
-      if (!workoutsByDate[date]) {
-        workoutsByDate[date] = { overall: 0 };
+    // Try individual workout history first (new structure)
+    let foundData = false;
+    try {
+      const historySnapshot = await db.collection('users').doc(userId).collection('workout_history')
+        .where('date', '>=', startStr)
+        .where('date', '<=', endStr)
+        .get();
+
+      if (historySnapshot && historySnapshot.docs && historySnapshot.docs.length > 0) {
+        console.log(`Found ${historySnapshot.docs.length} workouts in individual history for charts`);
+        foundData = true;
+        
+        for (const doc of historySnapshot.docs) {
+          const historyData = doc.data();
+          const date = historyData.date;
+          const workoutName = historyData.workoutName || 'Unknown Workout';
+          
+          if (!workoutsByDate[date]) {
+            workoutsByDate[date] = { overall: 0 };
+          }
+          
+          workoutsByDate[date].overall += 1;
+          workoutsByDate[date][workoutName] = (workoutsByDate[date][workoutName] || 0) + 1;
+          
+          workoutTypesSet.add(workoutName);
+          totalWorkouts += 1;
+          totalPointsEarned += historyData.pointsEarned || 0;
+        }
       }
-      
-      workoutsByDate[date].overall += 1;
-      workoutsByDate[date][workoutName] = (workoutsByDate[date][workoutName] || 0) + 1;
-      
-      workoutTypesSet.add(workoutName);
-      totalWorkouts += 1;
-      totalPointsEarned += historyData.pointsEarned || 0;
+    } catch (error) {
+      console.log('Individual workout history query failed:', error.message);
+    }
+
+    // If no individual history, try daily summaries
+    if (!foundData) {
+      try {
+        const dailySnapshot = await db.collection('users').doc(userId).collection('daily_workouts')
+          .where(db.FieldPath.documentId(), '>=', startStr)
+          .where(db.FieldPath.documentId(), '<=', endStr)
+          .get();
+
+        if (dailySnapshot && dailySnapshot.docs && dailySnapshot.docs.length > 0) {
+          console.log(`Found ${dailySnapshot.docs.length} daily summaries for charts`);
+          foundData = true;
+          
+          for (const doc of dailySnapshot.docs) {
+            const dailyData = doc.data();
+            const date = dailyData.date || doc.id;
+            
+            if (!dailyData || !dailyData.workouts || !Array.isArray(dailyData.workouts) || !dailyData.workoutDetails) {
+              continue;
+            }
+            
+            if (!workoutsByDate[date]) {
+              workoutsByDate[date] = { overall: 0 };
+            }
+            
+            for (const workoutId of dailyData.workouts) {
+              const workoutDetail = dailyData.workoutDetails[workoutId];
+              if (!workoutDetail) continue;
+              
+              const workoutName = workoutDetail.name || 'Unknown Workout';
+              
+              workoutsByDate[date].overall += 1;
+              workoutsByDate[date][workoutName] = (workoutsByDate[date][workoutName] || 0) + 1;
+              
+              workoutTypesSet.add(workoutName);
+              totalWorkouts += 1;
+              totalPointsEarned += workoutDetail.points || 0;
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Daily workouts query failed:', error.message);
+      }
+    }
+
+    // If still no data, try old global structure
+    if (!foundData) {
+      try {
+        const historySnapshot = await db.collection('workout_history')
+          .where('userId', '==', userId)
+          .where('date', '>=', startStr)
+          .where('date', '<=', endStr)
+          .get();
+
+        if (historySnapshot && historySnapshot.docs && historySnapshot.docs.length > 0) {
+          console.log(`Found ${historySnapshot.docs.length} workouts in old global structure for charts`);
+          
+          for (const doc of historySnapshot.docs) {
+            const historyData = doc.data();
+            const date = historyData.date;
+            
+            const workoutDoc = await db.collection('workouts').doc(historyData.workoutId).get();
+            const workoutData = workoutDoc.data();
+            const workoutName = workoutData?.name || historyData.workoutName || 'Unknown Workout';
+            
+            if (!workoutsByDate[date]) {
+              workoutsByDate[date] = { overall: 0 };
+            }
+            
+            workoutsByDate[date].overall += 1;
+            workoutsByDate[date][workoutName] = (workoutsByDate[date][workoutName] || 0) + 1;
+            
+            workoutTypesSet.add(workoutName);
+            totalWorkouts += 1;
+            totalPointsEarned += historyData.pointsEarned || 0;
+          }
+        }
+      } catch (error) {
+        console.log('Old workout_history query failed:', error.message);
+      }
     }
 
     const allDates = eachDayOfInterval({ start, end });

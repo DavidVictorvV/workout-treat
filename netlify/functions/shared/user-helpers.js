@@ -69,14 +69,26 @@ async function hasCompletedWorkoutToday(userId, workoutId, date) {
   const db = getFirestore();
   const dateStr = format(new Date(date), 'yyyy-MM-dd');
   
-  const query = await db.collection('workout_history')
+  // Check the new consolidated daily workout structure first
+  const dailyWorkoutRef = db.collection('users').doc(userId).collection('daily_workouts').doc(dateStr);
+  const dailyWorkoutDoc = await dailyWorkoutRef.get();
+  
+  if (dailyWorkoutDoc.exists) {
+    const dailyData = dailyWorkoutDoc.data();
+    if (dailyData.workouts && dailyData.workouts.includes(workoutId)) {
+      return true;
+    }
+  }
+  
+  // Fallback to old structure for backward compatibility
+  const oldQuery = await db.collection('workout_history')
     .where('userId', '==', userId)
     .where('workoutId', '==', workoutId)
     .where('date', '==', dateStr)
     .limit(1)
     .get();
     
-  return !query.empty;
+  return !oldQuery.empty;
 }
 
 module.exports = {
